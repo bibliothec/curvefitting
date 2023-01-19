@@ -2,7 +2,6 @@ import pandas as pd
 import math
 import matplotlib.pyplot as plt
 import random
-import numpy as np
 # from numba import jit
 
 # csvから読み取る関数
@@ -10,7 +9,6 @@ def read_csv(path):
     # ch0は光電子増倍管, ch1はピエゾ, ch2はエタロン
     df = pd.read_csv(path, sep=',', header=None,  names=['SampleNum', 'DataTime', 'ch0', 'ch1', 'ch2', 'Events'])
     # CSV上の余計なデータの削除
-    # 上の複数行
     # 不要な列の削除
     drop_col = ['SampleNum', 'DataTime', 'Events']
     df = df.drop(drop_col,  axis=1)
@@ -26,7 +24,6 @@ def read_csv(path):
     df = df.drop(range(header_num, max_index))
     # indexの振り直し
     df = df.reset_index(drop=True)
-    # print(df)
     return df
 
 # 整形したCSVを出力する関数
@@ -41,14 +38,10 @@ def objective_function( lambda_est=696.5, temperature=200, gas_density=17 ):
     # 理論値αの配列
     alpha_theo = []
     for i in index:
-        # S1 = (1/(lambda_i*(10**(-9))))-(1/lambda_0)
         S2 = const_1/math.sqrt(temperature)
-        S1_2 = (1/((lambda_est+((i-max_index)*delta_lambda))*(10**(-9))))-(1/lambda_0)
-        # S1_2 = (1/((lambda_est)*(10**(-9))))-(1/lambda_0)
-        S_2 = math.exp((-1 * (S1_2 * S2) ** 2))
-        # alpha_i = 1 - math.exp(-(const_2 / (math.sqrt(temperature) * gas_density * S_2)))
-        alpha_i = 1 - math.exp((-1*const_2*(10**(gas_density))/(math.sqrt(temperature))) * S_2)
-        # alpha_i = 1 - math.exp(-1*(const_2 * ((10 ** (gas_density)) / (math.sqrt(temperature)) * gas_density * S_2)))
+        S1 = (1/((lambda_est+((i-max_index)*delta_lambda))*(10**(-9))))-(1/lambda_0)
+        S = math.exp((-1 * (S1 * S2) ** 2))
+        alpha_i = 1 - math.exp((-1*const_2*(10**(gas_density))/(math.sqrt(temperature))) * S)
         alpha_theo.append(alpha_i)
     return alpha_theo
 
@@ -58,15 +51,14 @@ def get_lambda_theo():
     for i in index:
         lambda_i = tmp_center_pos + delta_lambda * (i - max_index)
         lambda_theo.append(lambda_i)
-        # print(lambda_i)
     return lambda_theo
 
 def plot_graph():
     plt.figure(figsize = (10,6), facecolor='lightblue')
     plt.plot(lambda_theo, alpha_exp, color='blue', label='α(exp)')
     plt.plot(lambda_theo, alpha_theo, color='green', label='α(cal)')
-    #plt.xlabel("波長[nm]") 
-    #plt.ylabel("吸収率α") 
+    plt.xlabel("wavelength[nm]") 
+    plt.ylabel("absorption rate") 
     plt.legend(loc = 'upper right')
     plt.savefig("output.png")
     # plt.show()
@@ -97,7 +89,7 @@ class PSO():
     temperature_max = 600
     temperature_min = 300
     # パラメータのセッティング
-    pbestscore = np.zeros(particle_num-1)
+    pbestscore = [0] * particle_num
     gbestscore = 100000000
     # 最終的なパラメータ
     lambda_v = [0.0]*particle_num
@@ -120,12 +112,9 @@ class PSO():
             # self.lambda_x[i] = lambda_0*10**9 + (self.lambda_max + self.lambda_min) * 0.1 * random.random()
             self.lambda_x[i] = 696.543
             # self.temperature_x[i] = exp_integration + 0.8 * (random.random() - 0.5)
-            # self.temperature_x[i] = 300
             self.temperature_x[i] = round(self.temperature_min + ((self.temperature_max - self.temperature_min) * random.random()), 3)
             # self.gas_density_x[i] = temperature_est + (random.random() - 0.5 ) * 200
-            # self.gas_density_x[i] = 17
             self.gas_density_x[i] = round(self.gas_density_min + ((self.gas_density_max - self.gas_density_min) * random.random()), 3)
-            # print(f"{self.lambda_x[i]} {self.temperature_x[i]} {self.gas_density_x[i]}")
             self.lambda_pbest[i] = self.lambda_x[i]
             self.temperature_pbest[i] = self.temperature_x[i]
             self.gas_density_pbest[i] = self.gas_density_x[i]
@@ -151,7 +140,6 @@ class PSO():
             self.temperature_x[i] = self.temperature_x[i]+self.temperature_v[i]
             self.gas_density_x[i] = self.gas_density_x[i]+self.gas_density_v[i]
 
-    # def getalphascore(self, lambda_est=696.5, temperature=200, gas_density=5.46*(10**17)):
     def getalphascore(self, lambda_est, temperature, gas_density):
         self.alpha_theo = objective_function(lambda_est, temperature, gas_density)
         score = 0
@@ -164,9 +152,7 @@ class PSO():
             # 温度が負になったら再び初期化
             if self.temperature_x[i] < 0:
                 self.temperature_x[i] = self.temperature_min + (self.temperature_max - self.temperature_min)*random.random()
-
             nowscore = self.getalphascore(self.lambda_x[i], self.temperature_x[i], self.gas_density_x[i])
-            # print(nowscore)
             if nowscore < self.pbestscore[i]:
                 self.pbestscore[i] = nowscore 
                 self.lambda_pbest[i] = self.lambda_x[i]
@@ -184,7 +170,6 @@ class PSO():
                 self.getphasescore()
                 if i % 100 == 0 and i != 0:
                     print(f"{i}世代目")
-            #終わった時の処理
             return self.alpha_theo, self.lambda_gbest, self.temperature_gbest, self.gas_density_gbest
 
 
@@ -237,27 +222,25 @@ if __name__ == "__main__":
     FPI_signal_interval = 100
     # データ間隔=2.45199906427012e-05
     delta_lambda = FSL_ramda0 / (FPI_signal_interval - 1)
+    # 実験値αの最大値
+    max_value = max(alpha_exp)
     # 実験値αの最大セル位置
     max_index = alpha_exp.index(max(alpha_exp))
     # 実験値αの配列数
     index = list(range(0, len(alpha_exp)))
-    # 最大値
-    max_value = max(alpha_exp)
     # 半値
-    # half_value = statistics.median(alpha_exp)
-    sorted_alpha_exp = sorted(alpha_exp)
-    half_value = sorted_alpha_exp[int(len(alpha_exp)/2)]
+    # sorted_alpha_exp = sorted(alpha_exp)
+    # half_value = sorted_alpha_exp[int(len(alpha_exp)/2)]
     # 前半位置
-    front_position = alpha_exp.index(half_value)
+    # front_position = alpha_exp.index(half_value)
     # 後半位置
-    back_position = front_position + max_index
+    # back_position = front_position + max_index
     # estimated temperature
-    doppler_width = ( back_position - front_position )/FPI_signal_interval * etaron_width
-    transition = C / lambda_0
-    temperature_est = optical_path_length * C * C / (8 * R * math.log(2)) * ( (doppler_width/transition) ** 2)
-    # print(temperature_est)
+    # doppler_width = ( back_position - front_position )/FPI_signal_interval * etaron_width
+    # transition = C / lambda_0
+    # temperature_est = optical_path_length * C * C / (8 * R * math.log(2)) * ( (doppler_width/transition) ** 2)
     # 実験値積分
-    exp_integration = sum(alpha_exp) + FSL_ramda0
+    # exp_integration = sum(alpha_exp) + FSL_ramda0
     # 実験値λの取得
     lambda_theo = get_lambda_theo()
 
