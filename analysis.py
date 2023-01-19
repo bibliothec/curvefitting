@@ -1,10 +1,9 @@
 import pandas as pd
 import math
-import statistics
 import matplotlib.pyplot as plt
 import random
 import numpy as np
-from numba import jit
+# from numba import jit
 
 # csvから読み取る関数
 def read_csv(path):
@@ -66,9 +65,11 @@ def plot_graph():
     plt.figure(figsize = (10,6), facecolor='lightblue')
     plt.plot(lambda_theo, alpha_exp, color='blue', label='α(exp)')
     plt.plot(lambda_theo, alpha_theo, color='green', label='α(cal)')
+    #plt.xlabel("波長[nm]") 
+    #plt.ylabel("吸収率α") 
     plt.legend(loc = 'upper right')
     plt.savefig("output.png")
-    plt.show()
+    # plt.show()
 
 
 class PSO():
@@ -76,7 +77,7 @@ class PSO():
     # basic
     particle_num = 5
     unknown_num = 3
-    loop_max = 2000
+    loop_max = 3000
     alpha_theo = []
     # 重み
     lambda_w = 0.4
@@ -124,7 +125,7 @@ class PSO():
             # self.gas_density_x[i] = temperature_est + (random.random() - 0.5 ) * 200
             # self.gas_density_x[i] = 17
             self.gas_density_x[i] = round(self.gas_density_min + ((self.gas_density_max - self.gas_density_min) * random.random()), 3)
-            print(f"{self.lambda_x[i]} {self.temperature_x[i]} {self.gas_density_x[i]}")
+            # print(f"{self.lambda_x[i]} {self.temperature_x[i]} {self.gas_density_x[i]}")
             self.lambda_pbest[i] = self.lambda_x[i]
             self.temperature_pbest[i] = self.temperature_x[i]
             self.gas_density_pbest[i] = self.gas_density_x[i]
