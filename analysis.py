@@ -70,8 +70,8 @@ class PSO():
     # basic
     particle_num = 5
     unknown_num = 3
-    loop_max = 3000
     alpha_theo = []
+    nowscore = 10000000
     # 重み
     lambda_w = 0.4
     lambda_c1 = 1.8 
@@ -113,13 +113,13 @@ class PSO():
             # self.lambda_x[i] = lambda_0*10**9 + (self.lambda_max + self.lambda_min) * 0.1 * random.random()
             self.lambda_x[i] = 696.543
             # self.temperature_x[i] = exp_integration + 0.8 * (random.random() - 0.5)
-            self.temperature_x[i] = round(self.temperature_min + ((self.temperature_max - self.temperature_min) * random.random()), 3)
+            self.temperature_x[i] = random.uniform(self.temperature_min, self.temperature_max) # round(self.temperature_min + ((self.temperature_max - self.temperature_min) * random.random()), 3)
             # self.gas_density_x[i] = temperature_est + (random.random() - 0.5 ) * 200
-            self.gas_density_x[i] = round(self.gas_density_min + ((self.gas_density_max - self.gas_density_min) * random.random()), 3)
+            self.gas_density_x[i] = random.uniform(self.gas_density_min, self.gas_density_min) # round(self.gas_density_min + ((self.gas_density_max - self.gas_density_min) * random.random()), 3)
             self.lambda_pbest[i] = self.lambda_x[i]
             self.temperature_pbest[i] = self.temperature_x[i]
             self.gas_density_pbest[i] = self.gas_density_x[i]
-            v_keisu_tmp = 0.25
+            v_keisu_tmp = 0.4
             self.lambda_v[i] = (self.lambda_max - self.lambda_min) * v_keisu_tmp * (random.random() - 0.5)
             self.temperature_v[i] = (self.gas_density_max - self.gas_density_min) * v_keisu_tmp * (random.random() - 0.5)
             self.gas_density_v[i] = (self.temperature_max - self.temperature_min) * v_keisu_tmp * (random.random() - 0.5)
@@ -150,12 +150,17 @@ class PSO():
 
     def getphasescore(self):
         for i in range(self.particle_num-1):
-            # 温度が負になったら再び初期化
-            if self.temperature_x[i] < 0:
-                self.temperature_x[i] = self.temperature_min + (self.temperature_max - self.temperature_min)*random.random()
-            nowscore = self.getalphascore(self.lambda_x[i], self.temperature_x[i], self.gas_density_x[i])
-            if nowscore < self.pbestscore[i]:
-                self.pbestscore[i] = nowscore 
+            # 最小値と最大値を超えたら再び初期化
+            random.seed()
+            if self.temperature_x[i] < self.temperature_min or self.temperature_max < self.temperature_x[i]:
+                self.temperature_x[i] = random.uniform(self.temperature_min, self.temperature_max)
+            if self.gas_density_x[i] < self.gas_density_min or self.gas_density_max < self.gas_density_x[i]:
+                self.gas_density_x[i] = random.uniform(self.gas_density_min, self.gas_density_max)
+            if self.lambda_x[i] < self.lambda_min or self.lambda_max < self.lambda_x[i]:
+                self.lambda_x[i] = random.uniform(self.lambda_min, self.lambda_max)
+            self.nowscore = self.getalphascore(self.lambda_x[i], self.temperature_x[i], self.gas_density_x[i])
+            if self.nowscore < self.pbestscore[i]:
+                self.pbestscore[i] = self.nowscore 
                 self.lambda_pbest[i] = self.lambda_x[i]
                 self.temperature_pbest[i] = self.temperature_x[i]
                 self.gas_density_pbest[i] = self.gas_density_x[i]
@@ -166,20 +171,26 @@ class PSO():
                 self.gas_density_gbest = self.gas_density_pbest[i]
 
     def main(self):
-            for i in range(self.loop_max):
+            for i in range(10000):
                 self.move()
                 self.getphasescore()
-                if i % 100 == 0 and i != 0:
+                # print(self.nowscore)
+                if i % 1000 == 0 and i != 0:
                     print(f"{i}世代目")
+                if self.nowscore < border:
+                    break
+                elif i > 1000:
+                    print("もう一度やり直してください")
+                    break
             return self.alpha_theo, self.lambda_gbest, self.temperature_gbest, self.gas_density_gbest
 
 class GA():
     # paremeter
-    indiv_num = 50
+    indiv_num = 200
     gene_num = 3
     all_param = np.zeros((indiv_num, gene_num))
-    loop_num = 3000
     alpha_theo = []
+    nowscore = 0
     # パラメータの最小値と最大値
     lambda_max = 696.5435
     lambda_min = 696.5425
@@ -194,8 +205,8 @@ class GA():
             random.seed()
             self.all_param[i][0] = 696.543
             # self.all_param[i][0] = self.lambda_min + ((self.lambda_max - self.lambda_min) * random.random())
-            self.all_param[i][1] = self.temperature_min + ((self.temperature_max - self.temperature_min) * random.random())
-            self.all_param[i][2] = self.gas_density_min + ((self.gas_density_max - self.gas_density_min) * random.random())
+            self.all_param[i][1] = random.uniform(self.temperature_min, self.temperature_max)
+            self.all_param[i][2] = random.uniform(self.gas_density_min, self.gas_density_max)
 
     def getalphascore(self, lambda_est, temperature, gas_density):
             self.alpha_theo = objective_function(lambda_est, temperature, gas_density)
@@ -212,6 +223,7 @@ class GA():
             score_para.append(score)
         # get minimal score index
         min_indiv_index = score_para.index(min(score_para))
+        self.nowscore = min(score_para)
         min_tmp = np.zeros((2, 3), dtype=float)
         min_tmp[0][0] = self.all_param[min_indiv_index][0]
         min_tmp[0][1] = self.all_param[min_indiv_index][1]
@@ -224,29 +236,33 @@ class GA():
         min_tmp[1][0] = self.all_param[nthmin_indiv_index][0]
         min_tmp[1][1] = self.all_param[nthmin_indiv_index][1]
         min_tmp[1][2] = self.all_param[nthmin_indiv_index][2]
+        # パラメータの更新
+        startpos_random = 0
+        startpos_randamizechild = self.indiv_num-15
+        startpos_child = self.indiv_num-6
         # 交叉
         # ランダムで最小値かn番目最小値から値を入手して、元のパラメータを更新
-        for i in range(self.indiv_num):
+        for i in range(startpos_child, self.indiv_num):
             random.seed()
             rnd = random.randint(0, 1)
             self.all_param[i][0] = min_tmp[rnd][0]
-            random.seed()
             rnd = random.randint(0, 1)
             self.all_param[i][1] = min_tmp[rnd][1]
-            random.seed()
             rnd = random.randint(0, 1)
             self.all_param[i][2] = min_tmp[rnd][2]
         # 突然変異
         # ランダムでパラメータの値を更新
-        for i in range(self.indiv_num-6):
+        for i in range(startpos_random, startpos_randamizechild):
             random.seed()
-            # self.all_param[i][0] = self.all_param[i][0] + (0.02 * random.uniform(-1.0, 1.0))
-            self.all_param[i][0] = self.lambda_min + ((self.lambda_max - self.lambda_min) * random.random())
-            # self.all_param[i][1] = self.all_param[i][1] + (0.2 * random.uniform(-1.0, 1.0))
-            self.all_param[i][1] = self.temperature_min + ((self.temperature_max - self.temperature_min) * random.random())
-            # self.all_param[i][2] = self.all_param[i][2] + (0.2 * random.uniform(-1.0, 1.0))
-            self.all_param[i][2] = self.gas_density_min + ((self.gas_density_max - self.gas_density_min) * random.random())
-
+            self.all_param[i][0] = random.uniform(self.lambda_min, self.lambda_max)
+            self.all_param[i][1] = random.uniform(self.temperature_min, self.temperature_max)
+            self.all_param[i][2] = random.uniform(self.gas_density_min, self.gas_density_max)
+        # 最も良かったものの値を少し変えて残す
+        for i in range(startpos_randamizechild, startpos_child):
+            random.seed()
+            self.all_param[i][0] = min_tmp[0][0] + 0.1 * random.random()
+            self.all_param[i][1] = min_tmp[0][1] + 10 * random.random()
+            self.all_param[i][2] = min_tmp[0][2] + 5 * random.random()
 
     def get_bestscore_param(self):
         score_para = []
@@ -259,10 +275,12 @@ class GA():
         return self.alpha_theo, self.all_param[min_indiv_index][0], self.all_param[min_indiv_index][1], self.all_param[min_indiv_index][2]
 
     def main(self):
-        for i in range(self.loop_num):
+        for i in range(10000):
             self.next_gen()
             if i % 100 == 0 and i != 0:
                 print(f"{i}世代目")
+            if self.nowscore < border:
+                break
         alpha_theo, lambda_est, temperature, gas_density = self.get_bestscore_param()
         return alpha_theo, lambda_est, temperature, gas_density
 
@@ -272,6 +290,10 @@ class GA():
 if __name__ == "__main__":
     # 測定機器のサンプリングレート
     sampling_rate = 2000
+    # 最適化アルゴリズムの理論値と実測値の最小二乗のしきい値, これがカーブフィッティングの精度になる、0.45程度より低くはならない
+    border = 0.48
+    # FPI信号間隔
+    FPI_signal_interval = 100
     # ファイルのパスの設定
     path_dir = '/home/rune/desktop/zikken/curvefitting/'
     path_LonPon = path_dir + 'LonPon.csv'
@@ -313,9 +335,7 @@ if __name__ == "__main__":
     const_2 = (((lambda_0**3)*3*6390000*optical_path_length)/(8*math.pi*5))*math.sqrt(Ar_M/(2*math.pi*R))
     # λ0でのFSL=0.0024274790736274186
     FSL_ramda0 = (lambda_0 ** 2) / C * etaron_width * (10 ** 9)
-    # FPI信号間隔
-    FPI_signal_interval = 100
-    # データ間隔=2.45199906427012e-05
+        # データ間隔=2.45199906427012e-05
     delta_lambda = FSL_ramda0 / (FPI_signal_interval - 1)
     # 実験値αの最大値
     max_value = max(alpha_exp)
@@ -340,7 +360,7 @@ if __name__ == "__main__":
     lambda_theo = get_lambda_theo()
 
     # 最適化
-    opt_formula = GA()
+    opt_formula = PSO()
     alpha_theo, lambda_est, temperature, gas_density = opt_formula.main()
     
     df_alpha = pd.DataFrame(
