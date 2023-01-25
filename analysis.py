@@ -147,7 +147,7 @@ class PSO():
             score = score + (alpha_exp[i] - self.alpha_theo[i]) ** 2
         return score
     def getphasescore(self):
-        for i in range(self.particle_num-1):
+        for i in range(self.particle_num):
             # 最小値と最大値を超えたら再び初期化
             random.seed()
             if self.lambda_x[i] < self.lambda_min or self.lambda_max < self.lambda_x[i]:
@@ -435,6 +435,126 @@ class HOTARU():
                 break
         return self.alpha_theo, self.lambda_est, self.temperature, self.gas_density
 
+class BAT():
+    # paremeter
+    bat_num = 40
+    bats = np.zeros((bat_num, 3), dtype=float)
+    bats_v = np.zeros((bat_num, 3), dtype=float)
+    bats_pulse = np.zeros(bat_num, dtype=float)
+    bats_vol = np.ones(bat_num, dtype=float)
+    good_bat_num = int(bat_num/10)
+    freq_max = 1.0
+    freq_min = 0.0
+    volume_update_rate = 0.9
+    pulse_convergence_value = 0.5
+    pulse_convergence_speed = 0.9
+    step_cnt = 0
+    nowscore = 100000
+    # パラメータの最小値と最大値
+    lambda_max = 696.5435
+    lambda_min = 696.5425
+    temperature_max = 400
+    temperature_min = 250
+    gas_density_max = 19
+    gas_density_min = 12
+    # 返り値
+    alpha_theo = []
+    lambda_est = 0
+    temperature = 0
+    gas_density = 0
+    def __init__(self):
+        for i in range(self.bat_num):
+            self.bats[i][0] = random.uniform(self.lambda_min, self.lambda_max)
+            self.bats[i][1] = random.uniform(self.temperature_min, self.temperature_max)
+            self.bats[i][2] = random.uniform(self.gas_density_min, self.gas_density_max)
+    def getalphascore(self, lambda_est, temperature, gas_density):
+        self.alpha_theo = objective_function(lambda_est, temperature, gas_density)
+        score = 0
+        for i in range(len(alpha_exp)):
+            score = score + (alpha_exp[i] - self.alpha_theo[i]) ** 2
+        return score
+    def reset(self):
+        for i in range(self.bat_num):
+            # 最小値と最大値を超えたら再び初期化
+            random.seed()
+            if self.bats[i][0] < self.lambda_min or self.lambda_max < self.bats[i][0]:
+                self.bats[i][0] = random.uniform(self.lambda_min, self.lambda_max)
+            if self.bats[i][1] < self.temperature_min or self.temperature_max < self.bats[i][1]:
+                self.bats[i][1] = random.uniform(self.temperature_min, self.temperature_max)
+            if self.bats[i][2] < self.gas_density_min or self.gas_density_max < self.bats[i][2]:
+                self.bats[i][2] = random.uniform(self.gas_density_min, self.gas_density_max)
+    def sort_bats(self):
+        score = np.zeros(self.bat_num)
+        for i in range(self.bat_num):
+            score[i] = self.getalphascore(self.bats[i][0], self.bats[i][1], self.bats[i][2])
+        sorted_idx = np.argsort(score)
+        score = score[sorted_idx]
+        self.bats = self.bats[sorted_idx]
+        self.bats_pulse = self.bats_pulse[sorted_idx]
+        self.bats_vol = self.bats_vol[sorted_idx]
+    def step(self):
+        # 配列をソート
+        self.sort_bats()
+        # 最良コウモリに近づく
+        pos_best = self.bats[0] #min(self.bats)
+        for i in range(self.bat_num):
+            pos = self.bats[i]
+            # 周波数の計算
+            freq = random.uniform(self.freq_min, self.freq_max)
+            # 速度の計算
+            self.bats_v[i] = self.bats_v[i] * freq * (pos_best - pos)
+            # 位置を更新
+            self.bats[i] = self.bats[i] + self.bats_v[i]
+            score_bati = self.getalphascore(self.bats[i][0], self.bats[i][1], self.bats[i][2])
+        # 良いコウモリの近傍に移動
+            score_newbat1 = 100000
+            if self.bats_pulse[i] < random.random():
+                r = random.randint(0, self.good_bat_num)
+                pos_good = self.bats[r]
+                vol_ave = np.average(self.bats_vol)
+                new_bat1 = pos_good + vol_ave * random.uniform(-1, 1)
+                score_newbat1 = self.getalphascore(new_bat1[0], new_bat1[1], new_bat1[2])
+            # ランダムに生成
+            new_bat2 = 3 * [0.0]
+            new_bat2[0] = random.uniform(self.lambda_min, self.lambda_max)
+            new_bat2[1] = random.uniform(self.temperature_min, self.temperature_max)
+            new_bat2[2] = random.uniform(self.gas_density_min, self.gas_density_max)
+            score_newbat2 = self.getalphascore(new_bat2[0], new_bat2[1], new_bat2[2])
+            # 新しい位置が元の位置より評価が高いかどうか
+            #if (score_newbat1 is None or score_newbat1 < score_bati) and score_newbat2 < score_bati: 
+            if score_newbat1 < score_bati or score_newbat2 < score_bati: 
+                if random.uniform(-1, 1) < self.bats_vol[i]:
+                    # 新しい位置に変更と音量とパルス率の更新
+                    #if score_newbat1 is None or score_newbat1 >= score_newbat2:
+                    if score_newbat1 >= score_newbat2:
+                        self.bats[i] = new_bat2
+                    else:
+                        self.bats[i] = new_bat1
+                    # パルス率の更新
+                    self.bats_pulse[i] = self.pulse_convergence_value * (1-math.exp(-self.pulse_convergence_speed))
+                    # 音量の更新
+                    self.bats_vol[i] = self.volume_update_rate * self.bats_vol[i]
+                else:
+                    pass
+            else:
+                pass
+            self.step_cnt += 1
+            if self.nowscore > self.getalphascore(self.bats[i][0], self.bats[i][1], self.bats[i][2]):
+                self.nowscore = self.getalphascore(self.bats[i][0], self.bats[i][1], self.bats[i][2])
+                self.lambda_est = self.bats[i][0]
+                self.temperature = self.bats[i][1]
+                self.gas_density = self.bats[i][2]
+            #self.reset()
+    def main(self):
+        for i in range(300):
+            self.step()
+            # print(self.lambda_est, self.temperature, self.gas_density)
+            if i % 10 == 0 and i != 0:
+                print(f"{i}世代目")
+                print(self.nowscore)
+            if self.nowscore < border:
+                break
+        return self.alpha_theo, self.lambda_est, self.temperature, self.gas_density
 
 
 # メイン関数、これが実行される
@@ -511,7 +631,8 @@ if __name__ == "__main__":
     lambda_theo = get_lambda_theo()
 
     # 最適化
-    opt_formula = HOTARU()
+    opt_formula = BAT()
+    #opt_formula = HOTARU()
     #opt_formula = PSO()
     #opt_formula = GA_1()
     alpha_theo, lambda_est, temperature, gas_density = opt_formula.main()
