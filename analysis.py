@@ -46,6 +46,7 @@ def objective_function( lambda_est, temperature, gas_density ):
         alpha_theo.append(alpha_i)
     return alpha_theo
 
+# λを取得(x軸)
 def get_lambda_theo():
     # 理論値のλの配列(x軸の値になる)
     lambda_theo = []
@@ -54,6 +55,7 @@ def get_lambda_theo():
         lambda_theo.append(lambda_i)
     return lambda_theo
 
+# グラフ作成
 def plot_graph():
     plt.figure(figsize = (10,6), facecolor='lightblue')
     plt.plot(lambda_theo, alpha_exp, color='red', label='α(exp)')
@@ -68,7 +70,7 @@ def plot_graph():
 class PSO():
     # pso parametars
     # basic
-    particle_num = 5
+    particle_num = 40
     unknown_num = 3
     alpha_theo = []
     nowscore = 10000000
@@ -85,10 +87,10 @@ class PSO():
     # パラメータの最小値と最大値
     lambda_max = 696.5435
     lambda_min = 696.5425
-    gas_density_max = 20
-    gas_density_min = 10
-    temperature_max = 600
-    temperature_min = 300
+    gas_density_max = 19
+    gas_density_min = 12
+    temperature_max = 400
+    temperature_min = 250
     # パラメータのセッティング
     pbestscore = [0] * particle_num
     gbestscore = 100000000
@@ -105,13 +107,12 @@ class PSO():
     gas_density_x = [0.0]*particle_num
     gas_density_pbest = [0.0]*particle_num
     gas_density_gbest = 0
-
     # 初期値, コンストラクタ
     def __init__(self):
-        for i in range(self.particle_num-1):
+        for i in range(self.particle_num):
             # 位置と速度の初期化
             # self.lambda_x[i] = lambda_0*10**9 + (self.lambda_max + self.lambda_min) * 0.1 * random.random()
-            self.lambda_x[i] = 696.543
+            self.lambda_x[i] = random.uniform(self.lambda_min, self.lambda_max)
             # self.temperature_x[i] = exp_integration + 0.8 * (random.random() - 0.5)
             self.temperature_x[i] = random.uniform(self.temperature_min, self.temperature_max) # round(self.temperature_min + ((self.temperature_max - self.temperature_min) * random.random()), 3)
             # self.gas_density_x[i] = temperature_est + (random.random() - 0.5 ) * 200
@@ -131,33 +132,30 @@ class PSO():
                 self.lambda_gbest = self.lambda_pbest[i]
                 self.temperature_gbest = self.temperature_pbest[i]
                 self.gas_density_gbest = self.gas_density_pbest[i]
-
     def move(self):
-        for i in range(self.particle_num-1):
+        for i in range(self.particle_num):
             self.lambda_v[i] = self.lambda_w*random.random()*self.lambda_v[i] + self.lambda_c1*random.random()*(self.lambda_pbest[i]-self.lambda_x[i]) + self.lambda_c2*random.random()*(self.lambda_gbest-self.lambda_x[i])
             self.temperature_v[i] = self.temperature_w*random.random()*self.temperature_v[i] + self.temperature_c1*random.random()*(self.temperature_pbest[i]-self.temperature_x[i]) + self.temperature_c2*random.random()*(self.temperature_gbest-self.temperature_x[i])
             self.gas_density_v[i] = self.gas_density_w*random.random()*self.gas_density_v[i] + self.gas_density_c1*random.random()*(self.gas_density_pbest[i]-self.gas_density_x[i]) + self.gas_density_c2*random.random()*(self.gas_density_gbest-self.gas_density_x[i])
             self.lambda_x[i] = self.lambda_x[i]+self.lambda_v[i]
             self.temperature_x[i] = self.temperature_x[i]+self.temperature_v[i]
             self.gas_density_x[i] = self.gas_density_x[i]+self.gas_density_v[i]
-
     def getalphascore(self, lambda_est, temperature, gas_density):
         self.alpha_theo = objective_function(lambda_est, temperature, gas_density)
         score = 0
         for i in range(len(alpha_exp)):
             score = score + (alpha_exp[i] - self.alpha_theo[i]) ** 2
         return score
-
     def getphasescore(self):
         for i in range(self.particle_num-1):
             # 最小値と最大値を超えたら再び初期化
             random.seed()
+            if self.lambda_x[i] < self.lambda_min or self.lambda_max < self.lambda_x[i]:
+                self.lambda_x[i] = random.uniform(self.lambda_min, self.lambda_max)
             if self.temperature_x[i] < self.temperature_min or self.temperature_max < self.temperature_x[i]:
                 self.temperature_x[i] = random.uniform(self.temperature_min, self.temperature_max)
             if self.gas_density_x[i] < self.gas_density_min or self.gas_density_max < self.gas_density_x[i]:
                 self.gas_density_x[i] = random.uniform(self.gas_density_min, self.gas_density_max)
-            if self.lambda_x[i] < self.lambda_min or self.lambda_max < self.lambda_x[i]:
-                self.lambda_x[i] = random.uniform(self.lambda_min, self.lambda_max)
             self.nowscore = self.getalphascore(self.lambda_x[i], self.temperature_x[i], self.gas_density_x[i])
             if self.nowscore < self.pbestscore[i]:
                 self.pbestscore[i] = self.nowscore 
@@ -169,14 +167,14 @@ class PSO():
                 self.lambda_gbest = self.lambda_pbest[i]
                 self.temperature_gbest = self.temperature_pbest[i]
                 self.gas_density_gbest = self.gas_density_pbest[i]
-
     def main(self):
             for i in range(10000):
                 self.move()
                 self.getphasescore()
                 # print(self.nowscore)
-                if i % 1000 == 0 and i != 0:
+                if i % 100 == 0 and i != 0:
                     print(f"{i}世代目")
+                    print(self.lambda_gbest, self.temperature_gbest, self.gas_density_gbest)
                 if self.nowscore < border:
                     break
                 elif i > 1000:
@@ -184,7 +182,7 @@ class PSO():
                     break
             return self.alpha_theo, self.lambda_gbest, self.temperature_gbest, self.gas_density_gbest
 
-class GA():
+class GA_1():
     # paremeter
     indiv_num = 200
     gene_num = 3
@@ -196,9 +194,8 @@ class GA():
     lambda_min = 696.5425
     gas_density_max = 19
     gas_density_min = 12
-    temperature_max = 500
-    temperature_min = 300
-
+    temperature_max = 400
+    temperature_min = 250
     # 初期値、コンストラクタ
     def __init__(self) -> None:
         for i in range(self.indiv_num):
@@ -214,7 +211,6 @@ class GA():
             for i in range(len(alpha_exp)):
                 score = score + (alpha_exp[i] - self.alpha_theo[i]) ** 2
             return score
-    
     def next_gen(self):
         # make score list
         score_para = []
@@ -231,7 +227,6 @@ class GA():
         # get nth minimal score index
         nth = 2
         score_para_np = np.array(score_para)
-        # nthmin_indiv_index = np.where(score_para_np==np.sort(score_para_np)[-nth])
         nthmin_indiv_index = np.argsort(score_para_np)[-nth]
         min_tmp[1][0] = self.all_param[nthmin_indiv_index][0]
         min_tmp[1][1] = self.all_param[nthmin_indiv_index][1]
@@ -263,7 +258,6 @@ class GA():
             self.all_param[i][0] = min_tmp[0][0] + 0.1 * random.random()
             self.all_param[i][1] = min_tmp[0][1] + 10 * random.random()
             self.all_param[i][2] = min_tmp[0][2] + 5 * random.random()
-
     def get_bestscore_param(self):
         score_para = []
         for i in range(self.indiv_num):
@@ -273,7 +267,6 @@ class GA():
         min_indiv_index = score_para.index(min(score_para))
         _ = self.getalphascore(self.all_param[min_indiv_index][0], self.all_param[min_indiv_index][1], self.all_param[min_indiv_index][2])
         return self.alpha_theo, self.all_param[min_indiv_index][0], self.all_param[min_indiv_index][1], self.all_param[min_indiv_index][2]
-
     def main(self):
         for i in range(10000):
             self.next_gen()
@@ -284,6 +277,164 @@ class GA():
         alpha_theo, lambda_est, temperature, gas_density = self.get_bestscore_param()
         return alpha_theo, lambda_est, temperature, gas_density
 
+class GA_2():
+    # paremeter
+    indiv_num = 200
+    gene_num = 3
+    all_param = np.zeros((indiv_num, gene_num))
+    alpha_theo = []
+    nowscore = 0
+    # パラメータの最小値と最大値
+    lambda_max = 696.5435
+    lambda_min = 696.5425
+    gas_density_max = 19
+    gas_density_min = 12
+    temperature_max = 400
+    temperature_min = 250
+    # 初期値、コンストラクタ
+    def __init__(self) -> None:
+        for i in range(self.indiv_num):
+            random.seed()
+            self.all_param[i][0] = 696.543
+            # self.all_param[i][0] = self.lambda_min + ((self.lambda_max - self.lambda_min) * random.random())
+            self.all_param[i][1] = random.uniform(self.temperature_min, self.temperature_max)
+            self.all_param[i][2] = random.uniform(self.gas_density_min, self.gas_density_max)
+    def getalphascore(self, lambda_est, temperature, gas_density):
+            self.alpha_theo = objective_function(lambda_est, temperature, gas_density)
+            score = 0
+            for i in range(len(alpha_exp)):
+                score = score + (alpha_exp[i] - self.alpha_theo[i]) ** 2
+            return score
+    def next_gen(self):
+            score_para = []
+            for i in range(self.indiv_num):
+                score = self.getalphascore(self.all_param[i][0], self.all_param[i][1], self.all_param[i][2])
+                score_para.append(score)
+            self.nowscore = min(score_para)
+            score_para_np = np.array(score_para)
+            score_para_np_argsort = np.argsort(score_para_np)
+            score_para_min = score_para.index(min(score_para))
+            min_tmp = np.zeros((2, 3), dtype=float)
+            for i in range(self.indiv_num):
+                # スコアが高かった順から交叉、突然変異、そのまま、が行われる。
+                rnd = random.random()
+                if 1-(score_para_np_argsort[i]/self.indiv_num) > rnd:
+                    # kousa
+                    num_tmp = random.randint(1,2)
+                    if num_tmp == 1:
+                        self.all_param[i][0] = self.all_param[score_para_min][0]
+                    num_tmp = random.randint(1,2)
+                    if num_tmp == 1:
+                        self.all_param[i][1] = self.all_param[score_para_min][1]
+                    num_tmp = random.randint(1,2)
+                    if num_tmp == 1:
+                        self.all_param[i][2] = self.all_param[score_para_min][2]
+                # 突然変異
+                elif (1-(score_para_np_argsort[i]/self.indiv_num))+(score_para_np_argsort[i]/self.indiv_num)*(1/2) > rnd:
+                    if random.random() < (1/3):
+                        self.all_param[i][0] = random.uniform(self.lambda_min, self.lambda_max)
+                    elif random.random() < (2/3):
+                        self.all_param[i][1] = random.uniform(self.temperature_min, self.temperature_max)
+                    elif random.random() < (3/3):
+                        self.all_param[i][1] = random.uniform(self.gas_density_min, self.gas_density_max)
+                else:
+                    # そのまま残す
+                    pass
+    def get_bestscore_param(self):
+        score_para = []
+        for i in range(self.indiv_num):
+            score = self.getalphascore(self.all_param[i][0], self.all_param[i][1], self.all_param[i][2])
+            score_para.append(score)
+        # get minimal score index
+        min_indiv_index = score_para.index(min(score_para))
+        _ = self.getalphascore(self.all_param[min_indiv_index][0], self.all_param[min_indiv_index][1], self.all_param[min_indiv_index][2])
+        return self.alpha_theo, self.all_param[min_indiv_index][0], self.all_param[min_indiv_index][1], self.all_param[min_indiv_index][2]
+    def main(self):
+        for i in range(10000):
+            self.next_gen()
+            if i % 100 == 0 and i != 0:
+                print(f"{i}世代目")
+            if self.nowscore < border:
+                break
+        alpha_theo, lambda_est, temperature, gas_density = self.get_bestscore_param()
+        return alpha_theo, lambda_est, temperature, gas_density
+
+# ホタルアルゴリズム
+class HOTARU():
+    # paremeter
+    firefly_num = 40
+    fireflys = np.zeros((firefly_num, 3))
+    attracting_degree = 1.0
+    absorb = 0.5
+    alpha = 0.5
+    nowscore = 100000
+    # パラメータの最小値と最大値
+    lambda_max = 696.5435
+    lambda_min = 696.5425
+    temperature_max = 400
+    temperature_min = 250
+    gas_density_max = 19
+    gas_density_min = 12
+    # 返り値
+    alpha_theo = []
+    lambda_est = 0
+    temperature = 0
+    gas_density = 0
+    def __init__(self):
+        for i in range(self.firefly_num):
+            self.fireflys[i][0] = random.uniform(self.lambda_min, self.lambda_max)
+            self.fireflys[i][1] = random.uniform(self.temperature_min, self.temperature_max)
+            self.fireflys[i][2] = random.uniform(self.gas_density_min, self.gas_density_max)
+    def getalphascore(self, lambda_est, temperature, gas_density):
+        self.alpha_theo = objective_function(lambda_est, temperature, gas_density)
+        score = 0
+        for i in range(len(alpha_exp)):
+            score = score + (alpha_exp[i] - self.alpha_theo[i]) ** 2
+        return score
+    def step(self):
+        max_pos = np.array([
+            [self.lambda_max, self.temperature_max, self.gas_density_max], 
+            [self.lambda_min, self.temperature_min, self.gas_density_min]
+            ], dtype=float)
+        for i in range(self.firefly_num):
+            for j in range(self.firefly_num):
+                if i == j:
+                    continue
+                score_i = self.getalphascore(self.fireflys[i][0], self.fireflys[i][1], self.fireflys[i][2])
+                score_j = self.getalphascore(self.fireflys[j][0], self.fireflys[j][1], self.fireflys[j][2])
+                if score_i > score_j:
+                    pos_i = self.fireflys[i]
+                    pos_j = self.fireflys[j]
+                    # ユークリッド距離
+                    d = np.linalg.norm(pos_j - pos_i)
+                    # 正規化
+                    d /= np.linalg.norm(max_pos)
+                    # 誘引度
+                    attract = self.attracting_degree * (math.exp(-self.absorb * (d ** 2)))
+                    r_range_lambda = 0.0001
+                    r_range_temperature = 30.0
+                    r_range_gas= 0.1
+                    pos_i[0] = pos_i[0] + attract * (pos_j[0] - pos_i[0]) + self.alpha * random.uniform(-r_range_lambda, r_range_lambda)
+                    pos_i[1] = pos_i[1] + attract * (pos_j[1] - pos_i[1]) + self.alpha * random.uniform(-r_range_temperature, r_range_temperature)
+                    pos_i[2] = pos_i[2] + attract * (pos_j[2] - pos_i[2]) + self.alpha * random.uniform(-r_range_gas, r_range_gas)
+                    self.fireflys[i] = pos_i
+                    #print(self.fireflys[i])
+                    if self.nowscore > self.getalphascore(self.fireflys[i][0], self.fireflys[i][1], self.fireflys[i][2]):
+                        self.nowscore = self.getalphascore(self.fireflys[i][0], self.fireflys[i][1], self.fireflys[i][2])
+                        self.lambda_est = self.fireflys[i][0]
+                        self.temperature = self.fireflys[i][1]
+                        self.gas_density = self.fireflys[i][2]
+    def main(self):
+        for i in range(100):
+            self.step()
+            # print(self.lambda_est, self.temperature, self.gas_density)
+            if i % 1 == 0 and i != 0:
+                print(f"{i}世代目")
+                print(self.nowscore)
+            if self.nowscore < border:
+                break
+        return self.alpha_theo, self.lambda_est, self.temperature, self.gas_density
+
 
 
 # メイン関数、これが実行される
@@ -291,7 +442,7 @@ if __name__ == "__main__":
     # 測定機器のサンプリングレート
     sampling_rate = 2000
     # 最適化アルゴリズムの理論値と実測値の最小二乗のしきい値, これがカーブフィッティングの精度になる、0.45程度より低くはならない
-    border = 0.48
+    border = 0.45
     # FPI信号間隔
     FPI_signal_interval = 100
     # ファイルのパスの設定
@@ -306,7 +457,7 @@ if __name__ == "__main__":
     LoffPon = read_csv(path_LoffPon)
     LoffPoff = read_csv(path_LoffPoff)
     # 整形したデータの出力(元のVBAでデータを処理したい場合)
-    export_shaped_csv()
+    #export_shaped_csv()
     # αの実験値を求める =1-((LonPon-LoffPon)/(LonPoff-LoffPoff))
     # 求める配列(平均を取る?一部分を切り取る?)を作って、そこから求める
     # nは何番目の半周期かを設定、奇数なら下降、偶数なら上昇を表す
@@ -360,7 +511,9 @@ if __name__ == "__main__":
     lambda_theo = get_lambda_theo()
 
     # 最適化
-    opt_formula = PSO()
+    opt_formula = HOTARU()
+    #opt_formula = PSO()
+    #opt_formula = GA_1()
     alpha_theo, lambda_est, temperature, gas_density = opt_formula.main()
     
     df_alpha = pd.DataFrame(
@@ -369,7 +522,7 @@ if __name__ == "__main__":
             '理論値α':alpha_theo
             }
     )
-    df_alpha.to_csv(path_dir + 'new_alpha.csv',  encoding = 'utf-8')
+    #df_alpha.to_csv(path_dir + 'new_alpha.csv',  encoding = 'utf-8')
 
     print(f"gas_temperature : {temperature}")
     print(f"gas_density : {10**gas_density}")
