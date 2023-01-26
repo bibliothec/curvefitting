@@ -437,7 +437,7 @@ class HOTARU():
 
 class BAT():
     # paremeter
-    bat_num = 40
+    bat_num = 50
     bats = np.zeros((bat_num, 3), dtype=float)
     bats_v = np.zeros((bat_num, 3), dtype=float)
     bats_pulse = np.zeros(bat_num, dtype=float)
@@ -446,17 +446,17 @@ class BAT():
     freq_max = 1.0
     freq_min = 0.0
     volume_update_rate = 0.9
-    pulse_convergence_value = 0.5
-    pulse_convergence_speed = 0.9
+    pulse_convergence_value = 0.7
+    pulse_convergence_speed = 0.2
     step_cnt = 0
     nowscore = 100000
     # パラメータの最小値と最大値
     lambda_max = 696.5435
     lambda_min = 696.5425
-    temperature_max = 400
-    temperature_min = 250
-    gas_density_max = 19
-    gas_density_min = 12
+    temperature_max = 320
+    temperature_min = 260
+    gas_density_max = 17
+    gas_density_min = 15
     # 返り値
     alpha_theo = []
     lambda_est = 0
@@ -508,11 +508,15 @@ class BAT():
             score_bati = self.getalphascore(self.bats[i][0], self.bats[i][1], self.bats[i][2])
         # 良いコウモリの近傍に移動
             score_newbat1 = 100000
-            if self.bats_pulse[i] < random.random():
+            if self.bats_pulse[i] > random.random():
                 r = random.randint(0, self.good_bat_num)
                 pos_good = self.bats[r]
                 vol_ave = np.average(self.bats_vol)
-                new_bat1 = pos_good + vol_ave * random.uniform(-1, 1)
+                new_bat1 = 3 * [0]
+                new_bat1[0] = pos_good[0] + vol_ave * random.uniform(-0.0001, 0.0001)
+                new_bat1[1] = pos_good[1] + vol_ave * random.uniform(-1.5, 1.5)
+                new_bat1[2] = pos_good[2] + vol_ave * random.uniform(-0.1, 0.1)
+                #print(new_bat1)
                 score_newbat1 = self.getalphascore(new_bat1[0], new_bat1[1], new_bat1[2])
             # ランダムに生成
             new_bat2 = 3 * [0.0]
@@ -546,10 +550,10 @@ class BAT():
                 self.gas_density = self.bats[i][2]
             #self.reset()
     def main(self):
-        for i in range(300):
+        for i in range(500):
             self.step()
             # print(self.lambda_est, self.temperature, self.gas_density)
-            if i % 10 == 0 and i != 0:
+            if i % 20 == 0 and i != 0:
                 print(f"{i}世代目")
                 print(self.nowscore)
             if self.nowscore < border:
@@ -562,7 +566,7 @@ if __name__ == "__main__":
     # 測定機器のサンプリングレート
     sampling_rate = 2000
     # 最適化アルゴリズムの理論値と実測値の最小二乗のしきい値, これがカーブフィッティングの精度になる、0.45程度より低くはならない
-    border = 0.45
+    border = 0.445
     # FPI信号間隔
     FPI_signal_interval = 100
     # ファイルのパスの設定
