@@ -3,7 +3,7 @@ import random
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-# from numba import jit
+#from numba import jit
 
 # csvから読み取る関数
 def read_csv(path):
@@ -70,27 +70,29 @@ def plot_graph():
 class PSO():
     # pso parametars
     # basic
-    particle_num = 40
+    particle_num = 30
     unknown_num = 3
     alpha_theo = []
     nowscore = 10000000
     # 重み
+    pbest_num = 2.5
+    gbest_num = 1.7
     lambda_w = 0.4
-    lambda_c1 = 1.8 
-    lambda_c2 = 2.1
+    lambda_c1 = pbest_num
+    lambda_c2 = gbest_num
     temperature_w = 0.7
-    temperature_c1 = 1.8
-    temperature_c2 = 2.1
+    temperature_c1 = pbest_num
+    temperature_c2 = gbest_num
     gas_density_w = 0.7
-    gas_density_c1 = 1.8
-    gas_density_c2 = 2.1
+    gas_density_c1 = pbest_num
+    gas_density_c2 = gbest_num
     # パラメータの最小値と最大値
     lambda_max = 696.5435
     lambda_min = 696.5425
-    gas_density_max = 19
-    gas_density_min = 12
-    temperature_max = 400
-    temperature_min = 250
+    gas_density_max = 18
+    gas_density_min = 15
+    temperature_max = 600
+    temperature_min = 200
     # パラメータのセッティング
     pbestscore = [0] * particle_num
     gbestscore = 100000000
@@ -120,7 +122,7 @@ class PSO():
             self.lambda_pbest[i] = self.lambda_x[i]
             self.temperature_pbest[i] = self.temperature_x[i]
             self.gas_density_pbest[i] = self.gas_density_x[i]
-            v_keisu_tmp = 0.4
+            v_keisu_tmp = 0.5
             self.lambda_v[i] = (self.lambda_max - self.lambda_min) * v_keisu_tmp * (random.random() - 0.5)
             self.temperature_v[i] = (self.gas_density_max - self.gas_density_min) * v_keisu_tmp * (random.random() - 0.5)
             self.gas_density_v[i] = (self.temperature_max - self.temperature_min) * v_keisu_tmp * (random.random() - 0.5)
@@ -168,16 +170,17 @@ class PSO():
                 self.temperature_gbest = self.temperature_pbest[i]
                 self.gas_density_gbest = self.gas_density_pbest[i]
     def main(self):
-            for i in range(10000):
+            for i in range(2000):
                 self.move()
                 self.getphasescore()
                 # print(self.nowscore)
                 if i % 100 == 0 and i != 0:
-                    print(f"{i}世代目")
+                    print("{}世代目".format(i))
                     print(self.lambda_gbest, self.temperature_gbest, self.gas_density_gbest)
+                    print(self.nowscore)
                 if self.nowscore < border:
                     break
-                elif i > 1000:
+                elif i > 10000:
                     print("もう一度やり直してください")
                     break
             return self.alpha_theo, self.lambda_gbest, self.temperature_gbest, self.gas_density_gbest
@@ -192,12 +195,17 @@ class GA_1():
     # パラメータの最小値と最大値
     lambda_max = 696.5435
     lambda_min = 696.5425
-    gas_density_max = 19
-    gas_density_min = 12
-    temperature_max = 400
-    temperature_min = 250
+    gas_density_max = 18
+    gas_density_min = 15
+    temperature_max = 500
+    temperature_min = 400
+    # 返り値
+    alpha_theo = []
+    lambda_est = 0
+    temperature = 0
+    gas_density = 0
     # 初期値、コンストラクタ
-    def __init__(self) -> None:
+    def __init__(self):
         for i in range(self.indiv_num):
             random.seed()
             self.all_param[i][0] = 696.543
@@ -233,8 +241,8 @@ class GA_1():
         min_tmp[1][2] = self.all_param[nthmin_indiv_index][2]
         # パラメータの更新
         startpos_random = 0
-        startpos_randamizechild = self.indiv_num-15
-        startpos_child = self.indiv_num-6
+        startpos_randamizechild = self.indiv_num-50
+        startpos_child = self.indiv_num-25
         # 交叉
         # ランダムで最小値かn番目最小値から値を入手して、元のパラメータを更新
         for i in range(startpos_child, self.indiv_num):
@@ -255,9 +263,13 @@ class GA_1():
         # 最も良かったものの値を少し変えて残す
         for i in range(startpos_randamizechild, startpos_child):
             random.seed()
-            self.all_param[i][0] = min_tmp[0][0] + 0.1 * random.random()
-            self.all_param[i][1] = min_tmp[0][1] + 10 * random.random()
-            self.all_param[i][2] = min_tmp[0][2] + 5 * random.random()
+            self.all_param[i][0] = min_tmp[0][0] + 0.01 * random.uniform(-1,1)
+            self.all_param[i][1] = min_tmp[0][1] + 5 * random.uniform(-1,1)
+            self.all_param[i][2] = min_tmp[0][2] + 1 * random.uniform(-1,1)
+        for i in range(1):
+            self.all_param[i][0] = min_tmp[0][0]
+            self.all_param[i][1] = min_tmp[0][1]
+            self.all_param[i][2] = min_tmp[0][2]
     def get_bestscore_param(self):
         score_para = []
         for i in range(self.indiv_num):
@@ -270,8 +282,9 @@ class GA_1():
     def main(self):
         for i in range(10000):
             self.next_gen()
-            if i % 100 == 0 and i != 0:
-                print(f"{i}世代目")
+            if i % 50 == 0 and i != 0:
+                print("{}世代目".format(i))
+                print(self.nowscore)
             if self.nowscore < border:
                 break
         alpha_theo, lambda_est, temperature, gas_density = self.get_bestscore_param()
@@ -287,12 +300,17 @@ class GA_2():
     # パラメータの最小値と最大値
     lambda_max = 696.5435
     lambda_min = 696.5425
-    gas_density_max = 19
-    gas_density_min = 12
-    temperature_max = 400
+    gas_density_max = 18
+    gas_density_min = 14
+    temperature_max = 350
     temperature_min = 250
+    # 返り値
+    alpha_theo = []
+    lambda_est = 0
+    temperature = 0
+    gas_density = 0
     # 初期値、コンストラクタ
-    def __init__(self) -> None:
+    def __init__(self):
         for i in range(self.indiv_num):
             random.seed()
             self.all_param[i][0] = 696.543
@@ -353,7 +371,8 @@ class GA_2():
         for i in range(10000):
             self.next_gen()
             if i % 100 == 0 and i != 0:
-                print(f"{i}世代目")
+                print("{}世代目".format(i))
+                print(self.nowscore)
             if self.nowscore < border:
                 break
         alpha_theo, lambda_est, temperature, gas_density = self.get_bestscore_param()
@@ -371,10 +390,10 @@ class HOTARU():
     # パラメータの最小値と最大値
     lambda_max = 696.5435
     lambda_min = 696.5425
-    temperature_max = 400
-    temperature_min = 250
-    gas_density_max = 19
-    gas_density_min = 12
+    temperature_max = 500
+    temperature_min = 400
+    gas_density_max = 18
+    gas_density_min = 15
     # 返り値
     alpha_theo = []
     lambda_est = 0
@@ -429,12 +448,13 @@ class HOTARU():
             self.step()
             # print(self.lambda_est, self.temperature, self.gas_density)
             if i % 1 == 0 and i != 0:
-                print(f"{i}世代目")
+                print("{}世代目".format(i))
                 print(self.nowscore)
             if self.nowscore < border:
                 break
         return self.alpha_theo, self.lambda_est, self.temperature, self.gas_density
 
+# コウモリアルゴリズム
 class BAT():
     # paremeter
     bat_num = 50
@@ -453,8 +473,8 @@ class BAT():
     # パラメータの最小値と最大値
     lambda_max = 696.5435
     lambda_min = 696.5425
-    temperature_max = 320
-    temperature_min = 260
+    temperature_max = 500
+    temperature_min = 400
     gas_density_max = 17
     gas_density_min = 15
     # 返り値
@@ -554,21 +574,109 @@ class BAT():
             self.step()
             # print(self.lambda_est, self.temperature, self.gas_density)
             if i % 20 == 0 and i != 0:
-                print(f"{i}世代目")
+                print("{}世代目".format(i))
+                print(self.nowscore)
+            if self.nowscore < border:
+                break
+        return self.alpha_theo, self.lambda_est, self.temperature, self.gas_density
+
+class CUCKOO():
+    # paremeter
+    nest_num = 10
+    nests = np.zeros((nest_num, 3), dtype=float)
+    good_nest_num = int(nest_num/10)
+    epsilon = 0.1
+    badnest_num = int(nest_num/1.5)
+    nowscore = 100000
+    # パラメータの最小値と最大値
+    lambda_max = 696.5435
+    lambda_min = 696.5425
+    temperature_max = 500
+    temperature_min = 400
+    gas_density_max = 17
+    gas_density_min = 15
+    # 返り値
+    alpha_theo = []
+    lambda_est = 0
+    temperature = 0
+    gas_density = 0
+    def __init__(self):
+        for i in range(self.nest_num):
+            self.nests[i][0] = random.uniform(self.lambda_min, self.lambda_max)
+            self.nests[i][1] = random.uniform(self.temperature_min, self.temperature_max)
+            self.nests[i][2] = random.uniform(self.gas_density_min, self.gas_density_max)
+    def getalphascore(self, lambda_est, temperature, gas_density):
+        self.alpha_theo = objective_function(lambda_est, temperature, gas_density)
+        score = 0
+        for i in range(len(alpha_exp)):
+            score = score + (alpha_exp[i] - self.alpha_theo[i]) ** 2
+        return score
+    def reset(self):
+        for i in range(self.nest_num):
+            # 最小値と最大値を超えたら再び初期化
+            random.seed()
+            if self.nests[i][0] < self.lambda_min or self.lambda_max < self.nests[i][0]:
+                self.nests[i][0] = random.uniform(self.lambda_min, self.lambda_max)
+            if self.nests[i][1] < self.temperature_min or self.temperature_max < self.nests[i][1]:
+                self.nests[i][1] = random.uniform(self.temperature_min, self.temperature_max)
+            if self.nests[i][2] < self.gas_density_min or self.gas_density_max < self.nests[i][2]:
+                self.nests[i][2] = random.uniform(self.gas_density_min, self.gas_density_max)
+    def sort_nests(self):
+        random.seed()
+        score = np.zeros(self.nest_num)
+        for i in range(self.nest_num):
+            score[i] = self.getalphascore(self.nests[i][0], self.nests[i][1], self.nests[i][2])
+        sorted_idx = np.argsort(score)
+        score = score[sorted_idx]
+        self.nests = self.nests[sorted_idx]
+    def step(self):
+        r = random.randint(0, self.nest_num-1)
+        new_nest = self.nests[r]
+        if random.random() < self.epsilon:
+            new_nest[0] = random.uniform(self.lambda_min, self.lambda_max)
+            new_nest[1] = random.uniform(self.temperature_min, self.temperature_max)
+            new_nest[2] = random.uniform(self.gas_density_min, self.gas_density_max)
+        r = random.randint(0, self.nest_num-1)
+        score_r = self.getalphascore(self.nests[r][0], self.nests[r][1], self.nests[r][2])
+        score_new = self.getalphascore(new_nest[0], new_nest[1], new_nest[2])
+        if score_r > score_new:
+            self.nests[r][0] = new_nest[0]
+            self.nests[r][1] = new_nest[1]
+            self.nests[r][2] = new_nest[2]
+        self.sort_nests()
+        for i in range(self.nest_num - self.badnest_num, self.nest_num):
+            self.nests[i][0] = random.uniform(self.lambda_min, self.lambda_max)
+            self.nests[i][1] = random.uniform(self.temperature_min, self.temperature_max)
+            self.nests[i][2] = random.uniform(self.gas_density_min, self.gas_density_max)
+        for i in range(self.nest_num):
+            if self.nowscore > self.getalphascore(self.nests[i][0], self.nests[i][1], self.nests[i][2]):
+                self.nowscore = self.getalphascore(self.nests[i][0], self.nests[i][1], self.nests[i][2])
+                self.lambda_est = self.nests[i][0]
+                self.temperature = self.nests[i][1]
+                self.gas_density = self.nests[i][2]
+            #self.reset()
+    def main(self):
+        for i in range(8000):
+            self.step()
+            # print(self.lambda_est, self.temperature, self.gas_density)
+            if i % 500 == 0 and i != 0:
+                print("{}世代目".format(i))
                 print(self.nowscore)
             if self.nowscore < border:
                 break
         return self.alpha_theo, self.lambda_est, self.temperature, self.gas_density
 
 
+
 # メイン関数、これが実行される
 if __name__ == "__main__":
     # 測定機器のサンプリングレート
     sampling_rate = 2000
-    # 最適化アルゴリズムの理論値と実測値の最小二乗のしきい値, これがカーブフィッティングの精度になる、0.45程度より低くはならない
-    border = 0.445
+    # 最適化アルゴリズムの理論値と実測値の最小二乗のしきい値, これがカーブフィッティングの精度になる、実験データ毎に変更
+    #border = 0.191
+    border = 0.71
     # FPI信号間隔
-    FPI_signal_interval = 100
+    FPI_signal_interval = 101
     # ファイルのパスの設定
     path_dir = '/home/rune/desktop/zikken/curvefitting/'
     path_LonPon = path_dir + 'LonPon.csv'
@@ -585,7 +693,7 @@ if __name__ == "__main__":
     # αの実験値を求める =1-((LonPon-LoffPon)/(LonPoff-LoffPoff))
     # 求める配列(平均を取る?一部分を切り取る?)を作って、そこから求める
     # nは何番目の半周期かを設定、奇数なら下降、偶数なら上昇を表す
-    n = 2
+    n = 1
     I1 = LonPon[['ch0']].loc[(sampling_rate/2)*(n-1):(sampling_rate/2)*n, :]
     I3 = LoffPon[['ch0']].loc[(sampling_rate/2)*(n-1):(sampling_rate/2)*n, :]
     I2 = LonPoff[['ch0']].loc[(sampling_rate/2)*(n-1):(sampling_rate/2)*n, :]
@@ -595,6 +703,17 @@ if __name__ == "__main__":
     for i in range(int((sampling_rate/2)*(n-1)), int((sampling_rate/2)*n)):
         alpha_i = 1-((I1.at[i, 'ch0']-I3.at[i, 'ch0'])/(I2.at[i, 'ch0']-I4.at[i, 'ch0']))
         alpha_exp.append(alpha_i)
+    # 実験値αの最大値
+    max_value = max(alpha_exp)
+    # 実験値αの最大セル位置
+    max_index = alpha_exp.index(max(alpha_exp))
+    # 実験値αの中から吸収部分だけ取り出す
+    slice_range = 200
+    #alpha_exp = alpha_exp[max_index-slice_range:max_index+slice_range]
+    # 実験値αの配列数
+    index = list(range(0, len(alpha_exp)))
+
+
     # αの理論値を求める、フィッティングを行って、温度と密度を出す
     # 定数
     lambda_0 = 696.543*(10**(-9))
@@ -610,14 +729,8 @@ if __name__ == "__main__":
     const_2 = (((lambda_0**3)*3*6390000*optical_path_length)/(8*math.pi*5))*math.sqrt(Ar_M/(2*math.pi*R))
     # λ0でのFSL=0.0024274790736274186
     FSL_ramda0 = (lambda_0 ** 2) / C * etaron_width * (10 ** 9)
-        # データ間隔=2.45199906427012e-05
+    # データ間隔=2.45199906427012e-05
     delta_lambda = FSL_ramda0 / (FPI_signal_interval - 1)
-    # 実験値αの最大値
-    max_value = max(alpha_exp)
-    # 実験値αの最大セル位置
-    max_index = alpha_exp.index(max(alpha_exp))
-    # 実験値αの配列数
-    index = list(range(0, len(alpha_exp)))
     # 半値
     # sorted_alpha_exp = sorted(alpha_exp)
     # half_value = sorted_alpha_exp[int(len(alpha_exp)/2)]
@@ -633,12 +746,18 @@ if __name__ == "__main__":
     # exp_integration = sum(alpha_exp) + FSL_ramda0
     # 実験値λの取得
     lambda_theo = get_lambda_theo()
+    #alpha_exp = np.array(alpha_exp)
+    #lambda_theo = np.array(lambda_theo)
+    #print(alpha_exp.shape)
+    #print(lambda_theo.shape)
 
     # 最適化
-    opt_formula = BAT()
-    #opt_formula = HOTARU()
+    #opt_formula = BAT()
+    opt_formula = HOTARU()
     #opt_formula = PSO()
+    #opt_formula = CUCKOO()
     #opt_formula = GA_1()
+    #opt_formula = GA_2()
     alpha_theo, lambda_est, temperature, gas_density = opt_formula.main()
     
     df_alpha = pd.DataFrame(
@@ -649,7 +768,8 @@ if __name__ == "__main__":
     )
     #df_alpha.to_csv(path_dir + 'new_alpha.csv',  encoding = 'utf-8')
 
-    print(f"gas_temperature : {temperature}")
-    print(f"gas_density : {10**gas_density}")
+    print("gas_temperature[K] : {}".format(temperature))
+    print("gas_density[/m^3] : {}".format(10**gas_density))
+    print("gas_density(N) : {}".format(gas_density))
     # plot
     plot_graph()
