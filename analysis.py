@@ -1,3 +1,4 @@
+# coding: UTF-8
 import math
 import random
 import pandas as pd
@@ -113,12 +114,9 @@ class PSO():
     def __init__(self):
         for i in range(self.particle_num):
             # 位置と速度の初期化
-            # self.lambda_x[i] = lambda_0*10**9 + (self.lambda_max + self.lambda_min) * 0.1 * random.random()
             self.lambda_x[i] = random.uniform(self.lambda_min, self.lambda_max)
-            # self.temperature_x[i] = exp_integration + 0.8 * (random.random() - 0.5)
-            self.temperature_x[i] = random.uniform(self.temperature_min, self.temperature_max) # round(self.temperature_min + ((self.temperature_max - self.temperature_min) * random.random()), 3)
-            # self.gas_density_x[i] = temperature_est + (random.random() - 0.5 ) * 200
-            self.gas_density_x[i] = random.uniform(self.gas_density_min, self.gas_density_min) # round(self.gas_density_min + ((self.gas_density_max - self.gas_density_min) * random.random()), 3)
+            self.temperature_x[i] = random.uniform(self.temperature_min, self.temperature_max)
+            self.gas_density_x[i] = random.uniform(self.gas_density_min, self.gas_density_min)
             self.lambda_pbest[i] = self.lambda_x[i]
             self.temperature_pbest[i] = self.temperature_x[i]
             self.gas_density_pbest[i] = self.gas_density_x[i]
@@ -173,12 +171,12 @@ class PSO():
             for i in range(2000):
                 self.move()
                 self.getphasescore()
-                # print(self.nowscore)
                 if i % 100 == 0 and i != 0:
                     print("{}世代目".format(i))
                     print(self.lambda_gbest, self.temperature_gbest, self.gas_density_gbest)
                     print(self.nowscore)
                 if self.nowscore < border:
+                    print(self.nowscore)
                     break
                 elif i > 10000:
                     print("もう一度やり直してください")
@@ -208,8 +206,7 @@ class GA_1():
     def __init__(self):
         for i in range(self.indiv_num):
             random.seed()
-            self.all_param[i][0] = 696.543
-            # self.all_param[i][0] = self.lambda_min + ((self.lambda_max - self.lambda_min) * random.random())
+            self.all_param[i][0] = random.uniform(self.lambda_min, self.lambda_max)
             self.all_param[i][1] = random.uniform(self.temperature_min, self.temperature_max)
             self.all_param[i][2] = random.uniform(self.gas_density_min, self.gas_density_max)
 
@@ -313,8 +310,7 @@ class GA_2():
     def __init__(self):
         for i in range(self.indiv_num):
             random.seed()
-            self.all_param[i][0] = 696.543
-            # self.all_param[i][0] = self.lambda_min + ((self.lambda_max - self.lambda_min) * random.random())
+            self.all_param[i][0] = random.uniform(self.lambda_min, self.lambda_max)
             self.all_param[i][1] = random.uniform(self.temperature_min, self.temperature_max)
             self.all_param[i][2] = random.uniform(self.gas_density_min, self.gas_density_max)
     def getalphascore(self, lambda_est, temperature, gas_density):
@@ -516,7 +512,7 @@ class BAT():
         # 配列をソート
         self.sort_bats()
         # 最良コウモリに近づく
-        pos_best = self.bats[0] #min(self.bats)
+        pos_best = self.bats[0] 
         for i in range(self.bat_num):
             pos = self.bats[i]
             # 周波数の計算
@@ -545,11 +541,9 @@ class BAT():
             new_bat2[2] = random.uniform(self.gas_density_min, self.gas_density_max)
             score_newbat2 = self.getalphascore(new_bat2[0], new_bat2[1], new_bat2[2])
             # 新しい位置が元の位置より評価が高いかどうか
-            #if (score_newbat1 is None or score_newbat1 < score_bati) and score_newbat2 < score_bati: 
             if score_newbat1 < score_bati or score_newbat2 < score_bati: 
                 if random.uniform(-1, 1) < self.bats_vol[i]:
                     # 新しい位置に変更と音量とパルス率の更新
-                    #if score_newbat1 is None or score_newbat1 >= score_newbat2:
                     if score_newbat1 >= score_newbat2:
                         self.bats[i] = new_bat2
                     else:
@@ -667,6 +661,137 @@ class CUCKOO():
         return self.alpha_theo, self.lambda_est, self.temperature, self.gas_density
 
 
+class BEE():
+    # paremeter
+    bee_num = 50
+    flowers = np.zeros((bee_num, 3), dtype=float)
+    flower_count = np.zeros(bee_num, dtype=float)
+    follow_bee = 10
+    visit_max = 10
+    nowscore = 100000
+    # パラメータの最小値と最大値
+    lambda_max = 696.5435
+    lambda_min = 696.5425
+    temperature_max = 500
+    temperature_min = 400
+    gas_density_max = 17
+    gas_density_min = 15
+    # 返り値
+    alpha_theo = []
+    lambda_est = 0
+    temperature = 0
+    gas_density = 0
+    def __init__(self):
+        for i in range(self.bee_num):
+            self.flowers[i][0] = random.uniform(self.lambda_min, self.lambda_max)
+            self.flowers[i][1] = random.uniform(self.temperature_min, self.temperature_max)
+            self.flowers[i][2] = random.uniform(self.gas_density_min, self.gas_density_max)
+    def getalphascore(self, lambda_est, temperature, gas_density):
+        self.alpha_theo = objective_function(lambda_est, temperature, gas_density)
+        score = 0
+        for i in range(len(alpha_exp)):
+            score = score + (alpha_exp[i] - self.alpha_theo[i]) ** 2
+        return score
+    def reset(self):
+        for i in range(self.bee_num):
+            # 最小値と最大値を超えたら再び初期化
+            random.seed()
+            if self.flowers[i][0] < self.lambda_min or self.lambda_max < self.flowers[i][0]:
+                self.flowers[i][0] = random.uniform(self.lambda_min, self.lambda_max)
+            if self.flowers[i][1] < self.temperature_min or self.temperature_max < self.flowers[i][1]:
+                self.flowers[i][1] = random.uniform(self.temperature_min, self.temperature_max)
+            if self.flowers[i][2] < self.gas_density_min or self.gas_density_max < self.flowers[i][2]:
+                self.flowers[i][2] = random.uniform(self.gas_density_min, self.gas_density_max)
+    def reset_new(self, new_flower):
+        # 最小値と最大値を超えたら再び初期化
+        random.seed()
+        if new_flower[0] < self.lambda_min or self.lambda_max < new_flower[0]:
+            new_flower[0] = random.uniform(self.lambda_min, self.lambda_max)
+        if new_flower[1] < self.temperature_min or self.temperature_max < new_flower[1]:
+            new_flower[1] = random.uniform(self.temperature_min, self.temperature_max)
+        if new_flower[2] < self.gas_density_min or self.gas_density_max < new_flower[2]:
+            new_flower[2] = random.uniform(self.gas_density_min, self.gas_density_max)
+
+    def selectFlower(self):
+        weights = [self.getalphascore(x[0], x[1], x[2]) for x in self.flowers]
+        r = random.random() * sum(weights)
+        num = 0
+        for i, weights in enumerate(weights):
+            num += weights
+            if r <= num:
+                return self.flowers[i], i
+    def step(self):
+        # 収穫バチフェーズ
+        for i in range(self.bee_num):
+            new_flower = self.flowers[i]
+            k = random.randint(0, len(new_flower)-1)
+            rnd = random.randint(0, self.bee_num-1)
+            bee2 = self.flowers[rnd]
+            if k == 0:
+                new_flower[k] = new_flower[k] + 0.05*(random.random()*2-1)*(new_flower[k]-bee2[k])
+            elif k == 1:
+                new_flower[k] = new_flower[k] + 0.05*(random.random()*2-1)*(new_flower[k]-bee2[k])
+            else:
+                new_flower[k] = new_flower[k] + 0.01*(random.random()*2-1)*(new_flower[k]-bee2[k])
+            self.reset_new(new_flower)
+            score_new_flower = self.getalphascore(new_flower[0], new_flower[1], new_flower[2])
+            score_now_bee = self.getalphascore(self.flowers[i][0], self.flowers[i][1], self.flowers[i][2])
+            if score_new_flower < score_now_bee:
+                self.flowers[i] = new_flower
+                if score_new_flower < self.nowscore:
+                    self.nowscore = score_new_flower
+                    self.lambda_est = new_flower[0]
+                    self.temperature = new_flower[1]
+                    self.gas_density = new_flower[2]
+            self.flower_count[i] += 1
+        # 追従バチフェーズ
+        for i in range(self.follow_bee):
+            new_flower, j = self.selectFlower()
+            #self.flowers[j] = new_flower
+            self.flower_count[j] += 1
+
+#            k = random.randint(0, len(new_flower)-1)
+#            if k == 0:
+#                new_flower[k] = new_flower[k] + 0.001*(random.random()*2-1)
+#            elif k == 1:
+#                new_flower[k] = new_flower[k] + 1*(random.random()*2-1)
+#            else:
+#                new_flower[k] = new_flower[k] + 0.1*(random.random()*2-1)
+#            self.reset_new(new_flower)
+            #print(new_flower)
+
+            new_flower_score = self.getalphascore(new_flower[0], new_flower[1], new_flower[2])
+            if new_flower_score < self.nowscore:
+                self.nowscore = new_flower_score
+                self.lambda_est = new_flower[0]
+                self.temperature = new_flower[1]
+                self.gas_density = new_flower[2]
+        # 偵察バチフェーズ
+        for i in range(len(self.flowers)):
+            if self.visit_max < self.flower_count[i]:
+                new_flower = np.zeros(3, dtype=float)
+                new_flower[0] = random.uniform(self.lambda_min, self.lambda_max)
+                new_flower[1] = random.uniform(self.temperature_min, self.temperature_max)
+                new_flower[2] = random.uniform(self.gas_density_min, self.gas_density_max)
+                self.flower_count[i] = 0
+                new_flower_score = self.getalphascore(new_flower[0], new_flower[1], new_flower[2])
+                if new_flower_score < self.nowscore:
+                    self.nowscore = new_flower_score
+                    self.lambda_est = new_flower[0]
+                    self.temperature = new_flower[1]
+                    self.gas_density = new_flower[2]
+            
+    def main(self):
+        for i in range(1000):
+            self.step()
+            # print(self.lambda_est, self.temperature, self.gas_density)
+            if i % 10 == 0 and i != 0:
+                print("{}世代目".format(i))
+                print(self.nowscore)
+            if self.nowscore < border:
+                break
+        return self.alpha_theo, self.lambda_est, self.temperature, self.gas_density
+
 
 # メイン関数、これが実行される
 if __name__ == "__main__":
@@ -748,14 +873,13 @@ if __name__ == "__main__":
     lambda_theo = get_lambda_theo()
     #alpha_exp = np.array(alpha_exp)
     #lambda_theo = np.array(lambda_theo)
-    #print(alpha_exp.shape)
-    #print(lambda_theo.shape)
 
     # 最適化
     #opt_formula = BAT()
-    opt_formula = HOTARU()
+    #opt_formula = HOTARU()
     #opt_formula = PSO()
     #opt_formula = CUCKOO()
+    opt_formula = BEE()
     #opt_formula = GA_1()
     #opt_formula = GA_2()
     alpha_theo, lambda_est, temperature, gas_density = opt_formula.main()
