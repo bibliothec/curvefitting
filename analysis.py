@@ -673,9 +673,9 @@ class BEE():
     lambda_max = 696.5435
     lambda_min = 696.5425
     temperature_max = 500
-    temperature_min = 400
+    temperature_min = 450
     gas_density_max = 17
-    gas_density_min = 15
+    gas_density_min = 16
     # 返り値
     alpha_theo = []
     lambda_est = 0
@@ -749,17 +749,6 @@ class BEE():
             new_flower, j = self.selectFlower()
             #self.flowers[j] = new_flower
             self.flower_count[j] += 1
-
-#            k = random.randint(0, len(new_flower)-1)
-#            if k == 0:
-#                new_flower[k] = new_flower[k] + 0.001*(random.random()*2-1)
-#            elif k == 1:
-#                new_flower[k] = new_flower[k] + 1*(random.random()*2-1)
-#            else:
-#                new_flower[k] = new_flower[k] + 0.1*(random.random()*2-1)
-#            self.reset_new(new_flower)
-            #print(new_flower)
-
             new_flower_score = self.getalphascore(new_flower[0], new_flower[1], new_flower[2])
             if new_flower_score < self.nowscore:
                 self.nowscore = new_flower_score
@@ -799,7 +788,7 @@ if __name__ == "__main__":
     sampling_rate = 2000
     # 最適化アルゴリズムの理論値と実測値の最小二乗のしきい値, これがカーブフィッティングの精度になる、実験データ毎に変更
     #border = 0.191
-    border = 0.71
+    border = 0.715
     # FPI信号間隔
     FPI_signal_interval = 101
     # ファイルのパスの設定
@@ -877,9 +866,9 @@ if __name__ == "__main__":
     # 最適化
     #opt_formula = BAT()
     #opt_formula = HOTARU()
-    #opt_formula = PSO()
+    opt_formula = PSO()
     #opt_formula = CUCKOO()
-    opt_formula = BEE()
+    #opt_formula = BEE()
     #opt_formula = GA_1()
     #opt_formula = GA_2()
     alpha_theo, lambda_est, temperature, gas_density = opt_formula.main()
